@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Plyr from 'plyr'
 import 'plyr/dist/plyr.css'
 
@@ -15,9 +15,76 @@ interface LearnHousePlayerProps {
   onReady?: () => void
 }
 
+type VideoEventType = 'play' | 'pause' | 'seek' | 'complete' | 'rewatch' | 'progress'
+
+interface VideoEvent {
+  videoId: string
+  videoTitle: string
+  videoUrl: string
+  eventType: VideoEventType
+  currentTime: number
+  duration: number
+  progress: number
+  btpUserId: string | null
+  btpUserName: string | null
+  timestamp: string
+}
+
 const LearnHousePlayer: React.FC<LearnHousePlayerProps> = ({ src, details, onReady }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
   const playerRef = useRef<Plyr | null>(null)
+  const [btpUserId, setBtpUserId] = useState<string | null>(null)
+  const [btpUserName, setBtpUserName] = useState<string | null>(null)
+  const lastProgressMilestone = useRef<number>(0)
+
+  // Parse BTP user ID from URL parameters on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const userId = urlParams.get('btp_user_id')
+      const userName = urlParams.get('btp_user_name')
+
+      if (userId) {
+        setBtpUserId(userId)
+        console.log('📊 BTP Analytics enabled for user:', userId)
+      }
+      if (userName) {
+        setBtpUserName(userName)
+      }
+    }
+  }, [])
+
+  // Send video event to parent window (BTP PWA)
+  const sendVideoEvent = (eventType: VideoEventType, player: Plyr) => {
+    if (!player || !player.duration) return
+
+    const progress = (player.currentTime / player.duration) * 100
+
+    const eventData: VideoEvent = {
+      videoId: src, // Using video URL as ID
+      videoTitle: document.title || 'LearnHouse Video',
+      videoUrl: src,
+      eventType,
+      currentTime: Math.floor(player.currentTime),
+      duration: Math.floor(player.duration),
+      progress: Math.round(progress),
+      btpUserId,
+      btpUserName,
+      timestamp: new Date().toISOString()
+    }
+
+    // Send to parent window (BTP PWA iframe)
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: 'video_event',
+          data: eventData
+        },
+        '*' // Consider restricting to specific origin in production
+      )
+      console.log(`📹 [BTP] Video ${eventType}:`, eventData.progress + '%', eventData)
+    }
+  }
 
   useEffect(() => {
     if (videoRef.current) {
@@ -69,6 +136,57 @@ const LearnHousePlayer: React.FC<LearnHousePlayerProps> = ({ src, details, onRea
         playerRef.current.on('ready', onReady)
       }
 
+      // BTP Analytics: Video Event Listeners
+      const player = playerRef.current
+
+      // Play event
+      player.on('play', () => {
+        sendVideoEvent('play', player)
+      })
+
+      // Pause event
+      player.on('pause', () => {
+        // Only send pause if not at the end (ended will handle completion)
+        if (player.currentTime < player.duration - 1) {
+          sendVideoEvent('pause', player)
+        }
+      })
+
+      // Seek event (when user jumps to different time)
+      player.on('seeking', () => {
+        sendVideoEvent('seek', player)
+      })
+
+      // Progress event (track milestones: 25%, 50%, 75%, 85%, 100%)
+      player.on('timeupdate', () => {
+        const progress = (player.currentTime / player.duration) * 100
+
+        // Check for milestone progress points
+        const milestones = [25, 50, 75, 85]
+        for (const milestone of milestones) {
+          if (progress >= milestone && lastProgressMilestone.current < milestone) {
+            lastProgressMilestone.current = milestone
+            sendVideoEvent('progress', player)
+            break
+          }
+        }
+      })
+
+      // Complete event (video finished)
+      player.on('ended', () => {
+        sendVideoEvent('complete', player)
+        lastProgressMilestone.current = 0 // Reset for rewatch
+      })
+
+      // Rewatch detection (video restarted after completion)
+      player.on('loadedmetadata', () => {
+        const wasCompleted = lastProgressMilestone.current >= 85
+        if (wasCompleted && player.currentTime < 5) {
+          sendVideoEvent('rewatch', player)
+          lastProgressMilestone.current = 0
+        }
+      })
+
       // Cleanup
       return () => {
         if (playerRef.current) {
@@ -76,7 +194,7 @@ const LearnHousePlayer: React.FC<LearnHousePlayerProps> = ({ src, details, onRea
         }
       }
     }
-  }, [details, onReady])
+  }, [details, onReady, btpUserId, btpUserName])
 
   return (
     <div className="w-full aspect-video rounded-lg overflow-hidden">
