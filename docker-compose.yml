@@ -17,7 +17,9 @@ services:
     image: postgres:16-alpine
     restart: always
     ports:
-      - "5432:5432"
+      - "5433:5432"
+    volumes:
+      - 2f1363363be1e40a40fff1c64678e1c8ad51205ca70d90547d64ba06513667c6:/var/lib/postgresql/data
     environment:
       - POSTGRES_USER=learnhouse
       - POSTGRES_PASSWORD=learnhouse
@@ -27,6 +29,7 @@ services:
       interval: 5s
       timeout: 4s
       retries: 5
+
   redis:
     image: redis:7.2.3
     restart: always
@@ -41,3 +44,7 @@ services:
     image: chromadb/chroma:0.5.16
     ports:
       - "8000:8000"
+
+volumes:
+  2f1363363be1e40a40fff1c64678e1c8ad51205ca70d90547d64ba06513667c6:
+    external: true

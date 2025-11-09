@@ -46,3 +46,16 @@ __pycache__/
 # Flyio
 .flyio/
 fly.toml
+
+# Database backups
+*.sql
+
+# Generated files
+.genkit/
+
+# Local configuration
+local-learnhouse-conf.env
+
+# Content uploads (keep structure)
+apps/api/content/*
+!apps/api/content/.gitkeep
