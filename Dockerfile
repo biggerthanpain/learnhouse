@@ -34,10 +34,15 @@ WORKDIR /app
 COPY --from=frontend-deps /app/node_modules ./node_modules
 COPY apps/web .
 
+# Accept build arguments for production URLs (can be overridden by Railway)
+ARG NEXT_PUBLIC_LEARNHOUSE_API_URL=http://localhost/api/v1/
+ARG NEXT_PUBLIC_LEARNHOUSE_BACKEND_URL=http://localhost/
+ARG NEXT_PUBLIC_LEARNHOUSE_DOMAIN=localhost
+
 # Set environment variables for the build
-ENV NEXT_PUBLIC_LEARNHOUSE_API_URL=http://localhost/api/v1/
-ENV NEXT_PUBLIC_LEARNHOUSE_BACKEND_URL=http://localhost/
-ENV NEXT_PUBLIC_LEARNHOUSE_DOMAIN=localhost
+ENV NEXT_PUBLIC_LEARNHOUSE_API_URL=${NEXT_PUBLIC_LEARNHOUSE_API_URL}
+ENV NEXT_PUBLIC_LEARNHOUSE_BACKEND_URL=${NEXT_PUBLIC_LEARNHOUSE_BACKEND_URL}
+ENV NEXT_PUBLIC_LEARNHOUSE_DOMAIN=${NEXT_PUBLIC_LEARNHOUSE_DOMAIN}
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
