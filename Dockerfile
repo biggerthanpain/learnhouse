@@ -34,11 +34,11 @@ WORKDIR /app
 COPY --from=frontend-deps /app/node_modules ./node_modules
 COPY apps/web .
 
-# IMPORTANT: Railway passes env vars directly, not as build args
-# These will be available during docker build if set in Railway
-ENV NEXT_PUBLIC_LEARNHOUSE_API_URL=${NEXT_PUBLIC_LEARNHOUSE_API_URL:-http://localhost/api/v1/}
-ENV NEXT_PUBLIC_LEARNHOUSE_BACKEND_URL=${NEXT_PUBLIC_LEARNHOUSE_BACKEND_URL:-http://localhost/}
-ENV NEXT_PUBLIC_LEARNHOUSE_DOMAIN=${NEXT_PUBLIC_LEARNHOUSE_DOMAIN:-localhost}
+# Hardcoded production URLs for Railway deployment
+# This ensures the Next.js frontend is built with correct production URLs
+ENV NEXT_PUBLIC_LEARNHOUSE_API_URL=https://learnhouse-production.up.railway.app/api/v1/
+ENV NEXT_PUBLIC_LEARNHOUSE_BACKEND_URL=https://learnhouse-production.up.railway.app/
+ENV NEXT_PUBLIC_LEARNHOUSE_DOMAIN=learnhouse-production.up.railway.app
 
 # Debug: Print the values being used
 RUN echo "Building with:" && \
